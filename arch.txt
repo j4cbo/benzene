@@ -1,0 +1,131 @@
+Benzene
+=======
+
+Introduction
+------------
+
+Benzene represents laser frames in an optimizable vector format. This format is intended to be
+used as an intermediate form for processing of laser image data, but it could also be used
+(with appropriate serialization defined) for storage and transmission.
+
+An image in Benzene is called a "frame". A frame is a set of one or more "segments", each
+describing a path that the laser is to trace out. There is no significance to the order of the
+segments in the frame - the Benzene library is responsible for ordering the segments in
+whatever way is easiest to draw.
+
+Each segment is defined parametrically by a function. The function takes two inputs,
+(tSeg, tFrame). There are usually five outputs (x, y, r, g, and b), but may be more for wider
+gamuts, focus servos, etc. tSeg varies from 0 to 1 over the length of the segment. tFrame
+varies from 0 to 1 over the length of the whole frame, and thus indicates where in the frame
+the segment has been placed - this is useful for animation. The screen area ranges from
+(-1, -1) to (+1, +1).
+
+All values are represented as 32-bit signed fixed-point integers in Q8.24 format representing
+values in the range [-128.0, 128.0), with overflow defined to wrap. This facilitates
+implementation in embedded systems which may lack floating-point hardware.
+
+For example, a white line from (0.0, 0.0) to (1.0, 1.0) - center to top right - would be:
+
+  x = tSeg
+  y = tSeg
+  r = 1.0
+  g = 1.0
+  b = 1.0
+
+From this simple design any sort of image can be drawn. Polygons are simply sequences of
+segments that happen to be end-to-end. A circle can be drawn by defining x and y in terms
+of sin(tSeg) and cos(tSeg). And so on.
+
+Let's consider a more complicated frame. This one consists of a rainbow line at a fixed
+location, plus a circle that moves over the course of the frame - this might be part of an
+animation. (Separating tSeg from tFrame allows the renderer to choose which parts of the image
+are drawn for how long, implement blanking points and delay between disconnected segments as
+needed, and implement automatic "tweening" to separate the frame rate from the refresh rate.)
+
+  Segment: rainbow line from (-0.5, -0.5) to (-0.5, 0.5)
+    x = -0.5
+    y = -0.5 + tSeg
+    r = 0.5 + (0.5 * sin(2pi * tSeg))
+    g = 0.5 + (0.5 * sin(2pi * (tSeg + 1/3)))
+    b = 0.5 + (0.5 * sin(2pi * (tSeg + 2/3)))
+
+  Segment: circle with r=0.5 moving from (0, 0.4) to (0, 0.5)
+    x = cos(2pi * tSeg) * 0.5 + 0.4
+    y = sin(2pi * tSeg) * 0.5 + 0.4 + (0.1 * tFrame)
+    r = 1.0
+    g = 1.0
+    b = 1.0
+
+Bytecode
+--------
+
+Benzene represents these functions as bytecode on a register-based VM. The VM has 12 registers,
+r0-r11, each 32 bits wide. When the first instruction of the function executes, r10 contains
+tSeg, r11 contains tFrame, and all other registers are zero. When the function finishes,
+r0-r4 should contain [x, y, r, g, b]. Optionally, r5-r8 may contain values corresponding to
+the ILDA User1 through User4 channels - see the ILDA spec for the meanings of those channels.
+The number of meaningful outputs provided by a segment will be defined as part of its metadata.
+
+The available instructions are:
+  - Add: rz := rx + ry
+  - Sub: rz := rx - ry
+  - Mul: rz := rx * ry
+  - Div: rz := rx / ry
+  - Mod: rz := rx % ry
+  - Sine: rz := sin(rx)
+  - Load: rz := (32-bit constant)
+  - [other instructions?]
+
+The function for a segment may contain up to 32 instructions. The register and instruction
+limits, and the set of instructions, may be expanded in the future.
+
+[ note: Only 12 registers are provided, not 16, to facilitate JIT implementations. ]
+
+To enable the real-time performance guarantees necessary for laser output, this language is
+intentionally not and will not be made Turing-complete.
+
+Pipeline
+--------
+
+Benzene's processing pipeline looks something like this:
+
+1. Generate patterns. This can be automated in various ways (automatic synthesis, games,
+   pre-designed content, etc). A pattern rendering library might provide API calls to generate
+   polygons, circles, etc., with predefined snippets of code, as well as ways of producing
+   functions directly.
+
+   Benzene separates *frame* rate from *refresh* rate, so to simplify animation, a low frame
+   rate can be used (in other words, "frames" are more like keyframes in an animation package).
+
+2. Clip. The pattern must be clipped to the viewing window, which may involve breaking up
+   segments. (For example, a circle that partially extends beyond the unit square would be
+   turned into four separate arcs.)
+
+   An implementation's clipping logic might be made available as a library function, to
+   facilitate masking shapes.
+
+3. Sort segments. The rendering pipeline must choose an order in which to traverse segments
+   so as to minimize blanking time. This is the Traveling Salesman Problem, which is hard to
+   solve optimally but for which good heuristics are available.
+
+4. Allocate time division and insert blanking time. The renderer chooses how much time to spend
+   drawing each segment based on the segment's length (or an approximation thereof) and how
+   much time to spend on jumps between segments.
+
+   For example: suppose the "rainbow line and white circle" frame given above is to be shown
+   for 100ms at a 30 Hz refresh rate. This means it must be drawn three times. Each repettion
+   requires: moving from the previous laser position to the top of the rainbow line; drawing
+   the rainbow line; jumping to the circle (with the laser off); then drawing the circle. The
+   circumference of the circle is roughly 3x the length of the line, so an implementation might
+   allocate the initial jump 10% of the repetition's total time, the line 20%, the jump to the
+   circle 10%, and the circle 60%.
+
+5. Render to points. The function is evaluated repeatedly with different values of tSeg and
+   tFrame, producing (x, y, r, g, b, ...) tuples that can be sent to the DAC. The progression
+   of tSeg may not be linear (allowing the galvos to accelerate and decelerate at the beginning
+   and end of a line segment).
+
+   Continuing the example above: the circle consumes the last 60% of each repitition, and the
+   frame is drawn three times as it's displayed. So, as tSeg ranges from 0 to 1, the value of
+   tFrame would vary first from (0.6 * 1/3) to (1.0 * 1/3), then the previous range plus 1/3,
+   then the previous range plus 2/3.
