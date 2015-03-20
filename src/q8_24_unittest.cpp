@@ -34,3 +34,18 @@ TEST(Q8_24Test, Negative) {
     EXPECT_EQ(Q8_24(-0.5) / Q8_24(4.0), Q8_24(-0.125));
     EXPECT_EQ(Q8_24(-2.0) / Q8_24(-4.0), Q8_24(0.5));
 }
+
+TEST(Q8_24Test, Limits) {
+    EXPECT_EQ(Q8_24::normal_max() + Q8_24::epsilon(), Q8_24(1.0));
+    EXPECT_EQ(Q8_24::normal_min(), Q8_24(-1.0));
+}
+
+TEST(Q8_24Test, Conversions) {
+    EXPECT_EQ(Q8_24(0).as_q0_15(), 0);
+    EXPECT_EQ(Q8_24::normal_max().as_q0_15(), 32767);
+    EXPECT_EQ(Q8_24::normal_min().as_q0_15(), -32768);
+
+    EXPECT_EQ(Q8_24(0).as_q8(), 0);
+    EXPECT_EQ(Q8_24::normal_max().as_q8(), 255);
+    EXPECT_EQ(Q8_24(-123.45).saturate_positive_normal().as_q8(), 0);
+}

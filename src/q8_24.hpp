@@ -51,12 +51,52 @@ public:
     /* Relational comparisons can just operate on the representation directly */
     constexpr bool operator==(const Q8_24 & rhs) const { return v == rhs.v; }
     constexpr bool operator!=(const Q8_24 & rhs) const { return v != rhs.v; }
-    constexpr bool operator>=(const Q8_24 & rhs) const { return v >= rhs.v; }
-    constexpr bool operator>(const Q8_24 & rhs)  const { return v > rhs.v; }
-    constexpr bool operator<(const Q8_24 & rhs)  const { return v < rhs.v; }
-    constexpr bool operator<=(const Q8_24 & rhs) const { return v <= rhs.v; }
+    constexpr bool operator>=(const Q8_24 & rhs) const { return int32_t(v) >= int32_t(rhs.v); }
+    constexpr bool operator>(const Q8_24 & rhs)  const { return int32_t(v) > int32_t(rhs.v); }
+    constexpr bool operator<(const Q8_24 & rhs)  const { return int32_t(v) < int32_t(rhs.v); }
+    constexpr bool operator<=(const Q8_24 & rhs) const { return int32_t(v) <= int32_t(rhs.v); }
 
     constexpr double as_double() const { return int32_t(v) / MULTIPLIER; }
+
+    constexpr int16_t as_q0_15() const {
+        return int32_t(v) >> 9;
+    }
+
+    constexpr int16_t as_q8() const {
+        return v >> 16;
+    }
+
+    constexpr Q8_24 saturate_normal() const {
+        if (*this > normal_max()) {
+            return normal_max();
+        } else if (*this < normal_min()) {
+            return normal_min();
+        } else {
+            return *this;
+        }
+    }
+
+    constexpr Q8_24 saturate_positive_normal() const {
+        if (*this > normal_max()) {
+            return normal_max();
+        } else if (*this < Q8_24(0)) {
+            return Q8_24(0);
+        } else {
+            return *this;
+        }
+    }
+
+    static constexpr Q8_24 normal_max() {
+        return Q8_24(from_raw{}, (1 << MANTISSA_BITS) - 1);
+    }
+
+    static constexpr Q8_24 normal_min() {
+        return Q8_24(-1);
+    }
+
+    static constexpr Q8_24 epsilon() {
+        return Q8_24(from_raw{}, 1);
+    }
 
 private:
     struct from_raw {};
