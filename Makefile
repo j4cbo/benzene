@@ -46,6 +46,7 @@ gtest_main.a : gtest-all.o gtest_main.o
 # function.
 
 SRCS = \
+    src/ilda_output_device.cpp \
     src/q8_24_unittest.cpp \
     src/segment.cpp \
     src/segment_builders.cpp \
