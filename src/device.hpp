@@ -1,5 +1,3 @@
-#pragma once
-
 /*
  * benzene laser synthesis library
  * Copyright (c) 2015 Jacob Potter, All rights reserved.
@@ -15,33 +13,36 @@
  * The License can be found in lgpl-2.1.txt or at https://www.gnu.org/licenses/lgpl-2.1.html
  */
 
-#include "output_device.hpp"
-#include "device_handle.hpp"
+#include <vector>
 #include <memory>
+
+#include "color.hpp"
 
 namespace benzene {
 
-class IldaOutputDevice : public OutputDevice {
+class Segment;
+class OutputDevice;
+
+class Device {
 public:
-    /*
-     * OutputDevice that writes to an ILDA file
-     */
-    IldaOutputDevice(const std::string & filename);
+    void draw_circle(double x, double y, double r, const Color & color);
+    void draw_line(double x1, double y1, double x2, double y2, const Color & color);
 
-    virtual void write_points(const Point * points, size_t n, int pps) override;
-    virtual Status get_status() const override;
-    virtual size_t get_capacity() const override;
-    virtual void stop() override;
-    virtual ~IldaOutputDevice() override;
+    /* Convenience function - equivalent to four draw_line() calls */
+    void draw_rect(double x1, double y1, double x2, double y2, const Color & color);
 
-    /*
-     * DeviceHandle that will create a new IldaOutputDevice when opened.
-     */
-    static DeviceHandle handle(const std::string & name);
+    void flip();
+
+    void wait_for_ready();
+
+    ~Device();
+
+    explicit Device(std::unique_ptr<OutputDevice>);
+    Device(const Device &) = delete;
 
 private:
-    class Impl;
-    const std::unique_ptr<Impl> m_impl;
+    const std::unique_ptr<OutputDevice> m_output_device;
+    std::vector<Segment> m_segment_buffer;
 };
 
 } // namespace benzene

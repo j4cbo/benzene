@@ -88,4 +88,10 @@ void IldaOutputDevice::stop() {
 
 IldaOutputDevice::~IldaOutputDevice() = default;
 
+/*static*/ DeviceHandle IldaOutputDevice::handle(const std::string & name) {
+    return DeviceHandle([name] {
+        return std::make_unique<IldaOutputDevice>(name);
+    });
+}
+
 } // namespace benzene

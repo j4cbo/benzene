@@ -1,5 +1,3 @@
-#pragma once
-
 /*
  * benzene laser synthesis library
  * Copyright (c) 2015 Jacob Potter, All rights reserved.
@@ -15,33 +13,44 @@
  * The License can be found in lgpl-2.1.txt or at https://www.gnu.org/licenses/lgpl-2.1.html
  */
 
-#include "output_device.hpp"
-#include "device_handle.hpp"
-#include <memory>
+#pragma once
+#include <vector>
 
 namespace benzene {
 
-class IldaOutputDevice : public OutputDevice {
+class DeviceHandle;
+class Device;
+
+/*
+ * The DeviceRegistry scans for and tracks available devices.
+ */
+class DeviceRegistry {
 public:
     /*
-     * OutputDevice that writes to an ILDA file
+     * DeviceRegistry is a singleton - get() creates one if it hasn't been created, or returns
+     * the existing one if it has.
      */
-    IldaOutputDevice(const std::string & filename);
-
-    virtual void write_points(const Point * points, size_t n, int pps) override;
-    virtual Status get_status() const override;
-    virtual size_t get_capacity() const override;
-    virtual void stop() override;
-    virtual ~IldaOutputDevice() override;
+    static DeviceRegistry & get();
 
     /*
-     * DeviceHandle that will create a new IldaOutputDevice when opened.
+     * The DeviceRegistry looks for available devices in the background. This returns the
+     * set of currently available devices.
      */
-    static DeviceHandle handle(const std::string & name);
+    std::vector<DeviceHandle> list();
+
+    /*
+     * Open a new connection to a device.
+     */
+    std::unique_ptr<Device> connect(const DeviceHandle & handle);
+
+    DeviceRegistry(const DeviceRegistry &) = delete;
+    DeviceRegistry & operator=(const DeviceRegistry &) = delete;
 
 private:
     class Impl;
     const std::unique_ptr<Impl> m_impl;
+    DeviceRegistry();
+    ~DeviceRegistry();
 };
 
 } // namespace benzene

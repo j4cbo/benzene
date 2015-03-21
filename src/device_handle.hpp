@@ -15,33 +15,20 @@
  * The License can be found in lgpl-2.1.txt or at https://www.gnu.org/licenses/lgpl-2.1.html
  */
 
-#include "output_device.hpp"
-#include "device_handle.hpp"
+#include <string>
 #include <memory>
+#include <functional>
 
 namespace benzene {
 
-class IldaOutputDevice : public OutputDevice {
+class OutputDevice;
+
+class DeviceHandle {
 public:
-    /*
-     * OutputDevice that writes to an ILDA file
-     */
-    IldaOutputDevice(const std::string & filename);
+    using DeviceFactory = std::function<std::unique_ptr<OutputDevice>()>;
+    explicit DeviceHandle(DeviceFactory func) : func(std::move(func)) {}
 
-    virtual void write_points(const Point * points, size_t n, int pps) override;
-    virtual Status get_status() const override;
-    virtual size_t get_capacity() const override;
-    virtual void stop() override;
-    virtual ~IldaOutputDevice() override;
-
-    /*
-     * DeviceHandle that will create a new IldaOutputDevice when opened.
-     */
-    static DeviceHandle handle(const std::string & name);
-
-private:
-    class Impl;
-    const std::unique_ptr<Impl> m_impl;
+    DeviceFactory func;
 };
 
 } // namespace benzene

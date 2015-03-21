@@ -5,6 +5,9 @@ GTEST_DIR = googletest
 
 # benzene source files
 SRCS = \
+    demo.cpp \
+    device.cpp \
+    device_registry.cpp \
     ilda_output_device.cpp \
     q8_24_unittest.cpp \
     segment.cpp \
