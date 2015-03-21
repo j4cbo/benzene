@@ -16,6 +16,7 @@
 #include "segment.hpp"
 #include "color.hpp"
 #include "insn.hpp"
+#include "segment_builders.hpp"
 
 namespace benzene {
 
