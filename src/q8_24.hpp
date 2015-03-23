@@ -62,6 +62,10 @@ public:
         return int32_t(v) >> 9;
     }
 
+    constexpr static Q8_24 from_q0_15(int16_t v) {
+        return Q8_24(from_raw{}, v << 9);
+    }
+
     constexpr int16_t as_q8() const {
         return v >> 16;
     }
