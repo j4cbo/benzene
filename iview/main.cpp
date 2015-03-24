@@ -16,6 +16,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 #include <fstream>
+#include <thread>
 #include "ilda.hpp"
 
 #define FPS 30
@@ -82,6 +83,8 @@ int main(int argc, char **argv) {
     glTranslatef(width / 2, width / 2, 0);
     glScalef(width / 2, width / -2, 0);
 
+    auto t = std::chrono::steady_clock::now();
+
     while (!SDL_QuitRequested()) {
         /* Handle SDL events */
         SDL_Event event;
@@ -90,7 +93,9 @@ int main(int argc, char **argv) {
         render(f);
 
         SDL_GL_SwapWindow(win);
-        SDL_Delay(1000 / FPS);
+
+        t += std::chrono::steady_clock::duration(std::chrono::seconds(1)) / FPS;
+        std::this_thread::sleep_until(t);
     }
 
     return 0;
